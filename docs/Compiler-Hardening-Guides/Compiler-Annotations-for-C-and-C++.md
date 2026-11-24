@@ -10,17 +10,19 @@ Both GCC and Clang recognize the `__attribute__` keyword to annotate source code
 
 The C++11[^CPP11] and C23[^C23] standards specify a new attribute specifier sequence to standardize the `__attribute__` functionality. The syntax is simply `[[prefix::attribute]]`, where the `prefix` specifies the namespace (e.g. `gnu` for a number of attributes described in this document) and `attribute` is the name of the attribute. Use this style when you can target these standards.
 
-When declaring functions, put attributes at the end of the declaration:
+When declaring functions, put attributes at the start of the declaration:
 
 ~~~c
-extern void *custom_allocator (size_t sz) [[gnu::malloc]] [[alloc_size (1)]];
+[[gnu::malloc]] [[alloc_size (1)]] extern void *custom_allocator (size_t sz);
 ~~~
 
-In a function definition, place attributes before the function name:
+Similarly in a function definition:
 
 ~~~c
-void * [[gnu::malloc]] [[gnu::alloc_size (1)]] custom_allocator (size_t sz) { … }
+[[gnu::malloc]] [[gnu::alloc_size (1)]] void * custom_allocator (size_t sz) { … }
 ~~~
+
+Compilers have in the past been more lax about the placement of attributes, especially when using the traditional `__attribute__` syntax, so you might see code that diverges from this, but this is the most correct placement when using the standard attribute syntax, and compilers might warn or error about incorrect attribute placements.
 
 Some function attributes accept parameters. Parameters can be numbers that indicate the position of the argument to the function; 1 indicates the first argument, 2 the second and so on. Parameters can also be keywords or names of identifiers that have been declared earlier in the program.
 
@@ -102,14 +104,14 @@ GCC `malloc`, `malloc (`_`deallocator`_`)`, and `malloc (`_`deallocator`_, _`ptr
 void my_free(void *ptr);
 
 // Denotes that my_malloc will return with a dynamically allocated piece of memory which must be freed using my_free.
-void * my_malloc(size_t size) [[gnu::malloc]] [[gnu::malloc(my_free, 1)]];
+[[gnu::malloc]] [[gnu::malloc(my_free, 1)]] void * my_malloc(size_t size);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that my_malloc will return with a dynamically allocated piece of memory which must be freed using my_free.
-void *my_malloc(size_t size) __attribute__ ((malloc, malloc (my_free, 1)));
+__attribute__ ((malloc, malloc (my_free, 1))) void *my_malloc(size_t size);
 ~~~
 
 Note that to benefit both from the associated optimizations and improved detection of memory errors functions should be marked with _both_ the form of the attribute without arguments and the form of the attribute with one or two arguments. [[Extended example at Compiler Explorer](https://godbolt.org/z/bc97ahbnd)]
@@ -118,26 +120,26 @@ Clang `ownership_returns`, `ownership_takes`, and `ownership_holds` in C++11 / C
 
 ~~~c
 // Denotes that my_malloc will return with a pointer to storage labeled as "my_allocation".
-void * my_malloc(size_t size) [[gnu::malloc]] [[clang::ownership_returns(my_allocation)]];
+[[gnu::malloc]] [[clang::ownership_returns(my_allocation)]] void * my_malloc(size_t size);
 
 // Denotes that my_free will deallocate storage pointed to by ptr that has been labeled "my_allocation".
-void my_free(void *ptr) [[clang::ownership_takes(my_allocation, 1)]] ;
+[[clang::ownership_takes(my_allocation, 1)]] void my_free(void *ptr);
 
 // Denotes that my_hold will take over the ownership of storage pointed to by ptr that has been labeled "my_allocation".
-void my_hold(void *ptr) [[clang::ownership_holds(my_allocation, 1)]];
+[[clang::ownership_holds(my_allocation, 1)]] void my_hold(void *ptr);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that my_malloc will return with a pointer to storage of labeled as "my_allocation" .
-void *my_malloc(size_t size) __attribute((malloc, ownership_returns(my_allocation)));
+__attribute((malloc, ownership_returns(my_allocation))) void *my_malloc(size_t size);
 
 // Denotes that my_free will deallocate storage pointed to by ptr that has been labeled "my_allocation".
-void my_free(void *ptr) __attribute((ownership_takes(my_allocation, 1)));
+__attribute((ownership_takes(my_allocation, 1))) void my_free(void *ptr);
 
 // Denotes that my_hold will take over the ownership of storage pointed to by ptr that has been labeled "my_allocation".
-void my_hold(void *ptr) __attribute((ownership_holds(my_allocation, 1)));
+__attribute((ownership_holds(my_allocation, 1))) void my_hold(void *ptr);
 ~~~
 
 [^gcc-malloc]: GCC team, [Using the GNU Compiler Collection (GCC): 6.35.1 Common Function Attributes: malloc](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-malloc-function-attribute), GCC Manual, 2024-08-01.
@@ -167,26 +169,26 @@ In C++11 / C23 attribute syntax:
 
 ~~~c
 // Denotes that my_malloc will return with a pointer to storage capable of holding up to size bytes.
-void * my_malloc(size_t size) [[gnu::alloc_size(1)]];
+[[gnu::alloc_size(1)]] void * my_malloc(size_t size);
 
 // Denotes that my_realloc will return with a pointer to storage capable of holding up to size bytes.
-void * my_realloc(void* ptr, size_t size)  [[gnu::alloc_size(2)]];
+[[gnu::alloc_size(2)]] void * my_realloc(void* ptr, size_t size);
 
 // Denotes that my_calloc will return with a pointer to storage capable of holding up to n * size bytes.
-void * my_calloc(size_t n, size_t size)  [[gnu::alloc_size(1, 2)]];
+[[gnu::alloc_size(1, 2)]] void * my_calloc(size_t n, size_t size);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that my_malloc will return with a pointer to storage capable of holding up to size bytes.
-void *my_malloc(size_t size) __attribute__((alloc_size(1)));
+__attribute__((alloc_size(1))) void *my_malloc(size_t size);
 
 // Denotes that my_realloc will return with a pointer to storage capable of holding up to size bytes.
-void *my_realloc(void* ptr, size_t size) __attribute__((alloc_size(2)));
+__attribute__((alloc_size(2))) void *my_realloc(void* ptr, size_t size);
 
 // Denotes that my_calloc will return with a pointer to storage capable of holding up to n * size bytes.
-void *my_calloc(size_t n, size_t size) __attribute__((alloc_size(1, 2)));
+__attribute__((alloc_size(1, 2))) void *my_calloc(size_t n, size_t size);
 
 // The following assertions will evaluate to true in both GCC and Clang
 void *const p = my_malloc(100);
@@ -236,50 +238,50 @@ In C++11 / C23 attribute syntax:
 
 ~~~c
 // Denotes that puts performs read-only access on the memory pointed to by ptr.
-int puts (const char* ptr) [[gnu::access(read_only, 1)]];
+[[gnu::access(read_only, 1)]] int puts (const char* ptr);
 
 // Denotes that strcat performs read-write access on the memory pointed to by destination and read-only access on the memory pointed to by source.
-char* strcat (char* destination, const char* source) [[gnu::access(read_write, 1)]] [[gnu::access(read_only, 2)]];
+[[gnu::access(read_write, 1)]] [[gnu::access(read_only, 2)]] char* strcat (char* destination, const char* source);
 
 // Denotes that strcpy performs write-only access on the memory pointed to by destination and read-only access on the memory pointed to by source.
-char* strcpy (char* destination, const char* source) [[gnu::access(write_only, 1)]] [[gnu::access(read_only, 2)]];
+[[gnu::access(write_only, 1)]] [[gnu::access(read_only, 2)]] char* strcpy (char* destination, const char* source);
 
 // Denotes that fgets performs write-only access up to n characters on the memory pointed to by buff and read-write access on the memory pointed to by stream.
-char* fgets (char* buff, int n, FILE* stream) [[gnu::access(write_only, 1, 2)]] [[gnu::access(read_write, 3)];
+[[gnu::access(write_only, 1, 2)]] [[gnu::access(read_write, 3)] char* fgets (char* buff, int n, FILE* stream);
 
 // Denotes that print_buffer performs read-only access up to size characters on memory pointed to by buffer.
-void print_buffer(const char *buffer, size_t size) [[gnu::access(read_only, 1, 2)]];
+[[gnu::access(read_only, 1, 2)]] void print_buffer(const char *buffer, size_t size);
 
 // Denotes that fill_buffer performs write-only access up to size characters on memory pointed to by buffer.
-void fill_buffer(char *buffer, size_t size) [[gnu::access(write_only, 1, 2)]];
+[[gnu::access(write_only, 1, 2)]] void fill_buffer(char *buffer, size_t size);
 
 // Denotes that to_uppercase performs read-write access up to size characters on memory pointed to by buffer.
-void to_uppercase(char *buffer, size_t size) [[gnu::access(read_write, 1, 2)]];
+[[gnu::access(read_write, 1, 2)]] void to_uppercase(char *buffer, size_t size);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that puts performs read-only access on the memory pointed to by ptr.
-int puts (const char* ptr) __attribute__ ((access (read_only, 1)));
+__attribute__ ((access (read_only, 1))) int puts (const char* ptr);
 
 // Denotes that strcat performs read-write access on the memory pointed to by destination and read-only access on the memory pointed to by source.
-char* strcat (char* destination, const char* source) __attribute__ ((access (read_write, 1), access (read_only, 2)));
+__attribute__ ((access (read_write, 1), access (read_only, 2))) char* strcat (char* destination, const char* source);
 
 // Denotes that strcpy performs write-only access on the memory pointed to by destination and read-only access on the memory pointed to by source.
-char* strcpy (char* destination, const char* source) __attribute__ ((access (write_only, 1), access (read_only, 2)));
+__attribute__ ((access (write_only, 1), access (read_only, 2))) char* strcpy (char* destination, const char* source);
 
 // Denotes that fgets performs write-only access up to n character on the memory pointed to by buff and read-write access on the memory pointed to by stream.
-char* fgets (char* buff, int n, FILE* stream) __attribute__ ((access (write_only, 1, 2), access (read_write, 3)));
+__attribute__ ((access (write_only, 1, 2), access (read_write, 3))) char* fgets (char* buff, int n, FILE* stream);
 
 // Denotes that print_buffer performs read-only access up to size characters on memory pointed to by buffer.
-void print_buffer(const char *buffer, size_t size) __attribute__((access(read_only, 1, 2)));
+__attribute__((access(read_only, 1, 2))) void print_buffer(const char *buffer, size_t size);
 
 // Denotes that fill_buffer performs write-only access up to size characters on memory pointed to by buffer.
-void fill_buffer(char *buffer, size_t size) __attribute__((access(write_only, 1, 2)));
+__attribute__((access(write_only, 1, 2))) void fill_buffer(char *buffer, size_t size);
 
 // Denotes that to_uppercase performs read-write access up to size characters on memory pointed to by buffer.
-void to_uppercase(char *buffer, size_t size) __attribute__((access(read_write, 1, 2)));
+__attribute__((access(read_write, 1, 2))) void to_uppercase(char *buffer, size_t size);
 ~~~
 
 [[Extended example at Compiler Explorer](https://godbolt.org/z/K44d89YM7)]
@@ -314,26 +316,26 @@ In C++11 / C23 attribute syntax:
 
 ~~~c
 // Denotes that use_file expects fd to be a valid and open file descriptor
-void use_file (int fd) [[gnu::fd_arg(1)]];
+[[gnu::fd_arg(1)]] void use_file (int fd);
 
 // Denotes that write_to_file expects fd to be a valid, open, and writable file descriptor
-void write_to_file (int fd, void *src, size_t size) [[gnu::fd_arg_write(1)]];
+[[gnu::fd_arg_write(1)]] void write_to_file (int fd, void *src, size_t size);
 
 // Denotes that read_from_file expects fd to be a valid, open, and readable file descriptor
-void  read_from_file (int fd, void *dst, size_t size) [[gnu::fd_arg_read(1)]];
+[[gnu::fd_arg_read(1)]] void read_from_file (int fd, void *dst, size_t size);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that use_file expects fd to be a valid and open file descriptor
-void use_file (int fd) __attribute__ ((fd_arg (1)));
+__attribute__ ((fd_arg (1))) void use_file (int fd);
 
 // Denotes that write_to_file expects fd to be a valid, open, and writable file descriptor
-void write_to_file (int fd, void *src, size_t size) __attribute__ ((fd_arg_write (1)));
+__attribute__ ((fd_arg_write (1))) void write_to_file (int fd, void *src, size_t size);
 
 // Denotes that read_from_file expects fd to be a valid, open, and readable file descriptor
-void read_from_file (int fd, void *dst, size_t size) __attribute__ ((fd_arg_read (1)));
+__attribute__ ((fd_arg_read (1))) void read_from_file (int fd, void *dst, size_t size);
 ~~~
 
 [[Extended example at Compiler Explorer](https://godbolt.org/z/T66Wj5YKv)]
@@ -358,14 +360,14 @@ In C++11 / C23 attribute syntax:
 
 ~~~c
 // Denotes that fatal will never return
-void fatal () [[noreturn]];
+[[noreturn]] void fatal ();
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Denotes that fatal will never return
-void fatal () __attribute__ ((noreturn));
+__attribute__ ((noreturn)) void fatal ();
 
 void    /* It does not make sense for a noreturn function to have a return type other than void. */
 fatal (...)
@@ -415,14 +417,14 @@ In C++11 / C23 attribute syntax:
 
 ~~~c
 // Marks arguments to do_with_untrusted as requiring sanitization
-void do_with_untrusted_input(int untrusted_input) [[gnu::tainted_args]];
+[[gnu::tainted_args]] void do_with_untrusted_input(int untrusted_input);
 ~~~
 
 In `__attribute__` keyword syntax:
 
 ~~~c
 // Marks arguments to do_with_untrusted as requiring sanitization
-void do_with_untrusted_input(int untrusted_input) __attribute__ ((tainted_args));
+__attribute__ ((tainted_args)) void do_with_untrusted_input(int untrusted_input);
 ~~~
 
 [[Extended example at Compiler Explorer](https://godbolt.org/z/rWzd68YvW)]
@@ -459,7 +461,7 @@ In C23 attribute syntax:
 ~~~c
 struct P {
   size_t count;
-  char array[] [[clang::counted_by(count)]];
+  [[clang::counted_by(count)]] char array[];
 };
 
 struct P *p = malloc(sizeof struct P);
@@ -470,7 +472,7 @@ In `__attribute__` keyword syntax:
 ~~~c
 struct P {
   size_t count;
-  char array[] __attribute__((counted_by(count)));
+  __attribute__((counted_by(count))) char array[];
 };
 
 struct P *p = malloc(sizeof struct P);
@@ -487,7 +489,7 @@ For existing code where `counted_by` nor `sized_by` cannot be used without re-or
 ~~~c
 struct Buffer {
   /* Referring to `count` requires late parsing */
-  char* buffer [[clang::counted_by(count)]];
+  [[clang::counted_by(count)]] char* buffer;
   /* Swapping `buffer` and `count` to avoid late parsing would break ABI */
   size_t count;
 };
