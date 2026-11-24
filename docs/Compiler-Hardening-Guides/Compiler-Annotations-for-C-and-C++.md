@@ -245,7 +245,7 @@ char* strcat (char* destination, const char* source) [[gnu::access(read_write, 1
 char* strcpy (char* destination, const char* source) [[gnu::access(write_only, 1)]] [[gnu::access(read_only, 2)]];
 
 // Denotes that fgets performs write-only access up to n characters on the memory pointed to by buff and read-write access on the memory pointed to by stream.
-int] fgets (char* buff, int n, FILE* stream) [[gnu::access(write_only, 1, 2)]] [[gnu::access(read_write, 3)];
+char* fgets (char* buff, int n, FILE* stream) [[gnu::access(write_only, 1, 2)]] [[gnu::access(read_write, 3)];
 
 // Denotes that print_buffer performs read-only access up to size characters on memory pointed to by buffer.
 void print_buffer(const char *buffer, size_t size) [[gnu::access(read_only, 1, 2)]];
@@ -270,7 +270,7 @@ char* strcat (char* destination, const char* source) __attribute__ ((access (rea
 char* strcpy (char* destination, const char* source) __attribute__ ((access (write_only, 1), access (read_only, 2)));
 
 // Denotes that fgets performs write-only access up to n character on the memory pointed to by buff and read-write access on the memory pointed to by stream.
-int fgets (char* buff, int n, FILE* stream) __attribute__ ((access (write_only, 1, 2), access (read_write, 3)));
+char* fgets (char* buff, int n, FILE* stream) __attribute__ ((access (write_only, 1, 2), access (read_write, 3)));
 
 // Denotes that print_buffer performs read-only access up to size characters on memory pointed to by buffer.
 void print_buffer(const char *buffer, size_t size) __attribute__((access(read_only, 1, 2)));
@@ -366,7 +366,7 @@ In `__attribute__` keyword syntax:
 ~~~c
 // Denotes that fatal will never return
 void fatal () __attribute__ ((noreturn));
-          
+
 void    /* It does not make sense for a noreturn function to have a return type other than void. */
 fatal (...)
 {
